@@ -84,7 +84,7 @@ void save_sprite_frame(const char* frame_name, const std::filesystem::path& spri
         return;
     }
     
-    sprite->setPosition(rect.size.width / 2, rect.size.height / 2);
+    sprite->ObjectDecoder::setPosition(rect.size.width / 2, rect.size.height / 2);
     sprite->setAnchorPoint({0.5f, 0.5f});
     
     renderTexture->begin();
