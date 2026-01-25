@@ -106,8 +106,8 @@ void traverse(CCNode* node, json& json_object, std::unordered_set<int> visited) 
         newobject["maxY"] = gob->m_objectRect.getMaxY();
         newobject["origin"]["x"] = gob->m_objectRect.origin.x;
         newobject["origin"]["y"] = gob->m_objectRect.origin.y;
-        newobject["size"]["x"] = gob->m_objectRect.size.x;
-        newobject["size"]["y"] = gob->m_objectRect.size.y;
+        newobject["size"]["width"] = gob->m_objectRect.size.width;
+        newobject["size"]["height"] = gob->m_objectRect.size.height;
         json_object[id_key]["hitbox"] = newobject;
         if (gob->m_baseColor) {
             json_object[id_key]["default_base_color_channel"] = gob->m_baseColor->m_defaultColorID;
