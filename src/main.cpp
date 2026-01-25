@@ -50,71 +50,11 @@ const char* get_frame_name(CCSprite* sprite_node) {
     return "none";
 }
 
-void save_sprite_frame(const char* frame_name, const std::filesystem::path& sprites_dir, std::unordered_set<std::string>& saved_frames) {
-    std::string frame_str(frame_name);
-    
-    if (frame_str == "none" || saved_frames.contains(frame_str)) {
-        return;
-    }
-    
-    auto* frame_cache = CCSpriteFrameCache::sharedSpriteFrameCache();
-    auto* frame = frame_cache->spriteFrameByName(frame_name);
-    
-    if (!frame) {
-        geode::log::warn("Could not find frame: {}", frame_name);
-        return;
-    }
-    
-    auto* sprite = CCSprite::createWithSpriteFrame(frame);
-    if (!sprite) {
-        geode::log::warn("Could not create sprite from frame: {}", frame_name);
-        return;
-    }
-    
-    auto* texture = frame->getTexture();
-    auto rect = frame->getRect();
-    
-    auto* renderTexture = CCRenderTexture::create(
-        static_cast<int>(rect.size.width),
-        static_cast<int>(rect.size.height)
-    );
-    
-    if (!renderTexture) {
-        geode::log::warn("Could not create render texture for frame: {}", frame_name);
-        return;
-    }
-    
-    sprite->ObjectDecoder::setPosition(rect.size.width / 2, rect.size.height / 2);
-    sprite->setAnchorPoint({0.5f, 0.5f});
-    
-    renderTexture->begin();
-    sprite->visit();
-    renderTexture->end();
-    
-    std::string safe_filename = frame_str;
-    for (char& c : safe_filename) {
-        if (c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|') {
-            c = '_';
-        }
-    }
-    
-    // Save as PNG
-    auto filepath = sprites_dir / (safe_filename + ".png");
-    if (renderTexture->saveToFile(filepath.string().c_str(), kCCImageFormatPNG)) {
-        saved_frames.insert(frame_str);
-        geode::log::debug("Saved sprite frame: {}", frame_name);
-    } else {
-        geode::log::warn("Failed to save sprite frame: {}", frame_name);
-    }
-}
-
-void traverse_gameobject(CCNode* node, const CCSize& parent_content_size, json& json_object, 
-                        const std::filesystem::path& sprites_dir, std::unordered_set<std::string>& saved_frames) {
+void traverse_gameobject(CCNode* node, const CCSize& parent_content_size, json& json_object) {
     const auto children_count = node->getChildrenCount();
     if (auto sprite_node = dynamic_cast<CCSprite*>(node); sprite_node && std::string(get_frame_name(sprite_node)) != std::string("none")) {
         auto object = json::object();
-        const char* frame_name = get_frame_name(sprite_node);
-        object["frame"] = frame_name;
+        object["frame"] = get_frame_name(sprite_node);
         object["x"] = sprite_node->getPositionX() - parent_content_size.width / 2;
         object["y"] = sprite_node->getPositionY() - parent_content_size.height / 2;
         object["z"] = sprite_node->getZOrder();
@@ -135,30 +75,26 @@ void traverse_gameobject(CCNode* node, const CCSize& parent_content_size, json& 
             auto rgbaNode = geode::cast::typeinfo_cast<CCRGBAProtocol*>(node);
             geode::log::debug("Unkown color: {}, {}, {}", rgbaNode->getColor().r, rgbaNode->getColor().g, rgbaNode->getColor().b);
         }
-        
-        save_sprite_frame(frame_name, sprites_dir, saved_frames);
-        
         auto children = node->getChildren();
         for (unsigned int i = 0; i < children_count; ++i) {
             auto child = children->objectAtIndex(i);
-            traverse_gameobject(dynamic_cast<CCNode*>(child), sprite_node->getContentSize(), object["children"], sprites_dir, saved_frames);
+            traverse_gameobject(dynamic_cast<CCNode*>(child), sprite_node->getContentSize(), object["children"]);
         }
         json_object.push_back(object);
     }
 }
 
-void traverse(CCNode* node, json& json_object, std::unordered_set<int> visited,
-             const std::filesystem::path& sprites_dir, std::unordered_set<std::string>& saved_frames) {
+void traverse(CCNode* node, json& json_object, std::unordered_set<int> visited) {
     const auto children_count = node->getChildrenCount();
     if (auto gob = dynamic_cast<GameObject *>(node); gob
             && !visited.contains(gob->m_objectID)
-            && !(gob->m_objectID == 8 && gob->getPositionX() == 0 && gob->getPositionY() == 105)
+            && !(gob->m_objectID == 8 && gob->getPositionX() == 0 && gob->getPositionY() == 105) // avoid anticheat spike
         ) {
         visited.insert(gob->m_objectID);
         auto id_key = std::to_string(gob->m_objectID);
         json_object[id_key] = json::object();
-        const char* frame_name = get_frame_name(gob);
-        json_object[id_key]["frame"] = frame_name;
+        json_object[id_key]["frame"] = get_frame_name(gob);
+        json_object[id_key]["object_type"] = gob->m_objectType;
         json_object[id_key]["default_z_layer"] = gob->m_defaultZLayer;
         json_object[id_key]["default_z_order"] = gob->m_defaultZOrder;
         if (gob->m_baseColor) {
@@ -181,19 +117,16 @@ void traverse(CCNode* node, json& json_object, std::unordered_set<int> visited,
             auto rgbaNode = geode::cast::typeinfo_cast<CCRGBAProtocol*>(node);
             geode::log::debug("Unkown color: {}, {}, {} for ID {}", rgbaNode->getColor().r, rgbaNode->getColor().g, rgbaNode->getColor().b, gob->m_objectID);
         }
-        
-        save_sprite_frame(frame_name, sprites_dir, saved_frames);
-        
         auto children = node->getChildren();
         for (unsigned int i = 0; i < children_count; ++i) {
             auto child = children->objectAtIndex(i);
-            traverse_gameobject(dynamic_cast<CCNode*>(child), gob->getContentSize(), json_object[id_key]["children"], sprites_dir, saved_frames);
+            traverse_gameobject(dynamic_cast<CCNode*>(child), gob->getContentSize(), json_object[id_key]["children"]);
         }
     } else {
         auto children = node->getChildren();
 		for (unsigned int i = 0; i < children_count; ++i) {
 			auto child = children->objectAtIndex(i);
-			traverse(dynamic_cast<CCNode*>(child), json_object, visited, sprites_dir, saved_frames);
+			traverse(dynamic_cast<CCNode*>(child), json_object, visited);
 		}
     }
 }
@@ -202,36 +135,16 @@ class $modify(EUIHook, EditorUI) {
     void onButton(CCObject* sender) {
         geode::createQuickPopup("object.json", "For this to work correctly you need to have every single object visible on screen!", "Back", "Run", [](FLAlertLayer*, bool yes) {
             if (!yes) return;
-            
-            auto save_dir = geode::Mod::get()->getSaveDir();
-            auto sprites_dir = save_dir / "sprites";
-            
-            std::error_code ec;
-            std::filesystem::create_directories(sprites_dir, ec);
-            if (ec) {
-                geode::log::error("Failed to create sprites directory: {}", ec.message());
-                geode::createQuickPopup("Error", "Failed to create sprites directory!", "OK", nullptr, nullptr);
-                return;
-            }
-            
             json json;
             std::unordered_set<int> visited = {914};
-            std::unordered_set<std::string> saved_frames;
-            
-            traverse(CCScene::get()->getChildByIDRecursive("batch-layer"), json, visited, sprites_dir, saved_frames);
-            
-            std::ofstream o(save_dir / "object.json");
+            traverse(CCScene::get()->getChildByIDRecursive("batch-layer"), json, visited);
+            std::ofstream o(geode::Mod::get()->getSaveDir() / "object.json");
             o << json.dump(4);
             o.close();
-            
-            geode::log::info("Saved {} unique sprite frames", saved_frames.size());
-            
-            geode::createQuickPopup("object.json", 
-                fmt::format("Dump finished successfully!\nSaved {} sprite frames.\nDo you want to open the folder?", saved_frames.size()), 
-                "No", "Yes", [](FLAlertLayer*, bool yes) {
-                    if(!yes) return;
-                    geode::utils::file::openFolder(geode::Mod::get()->getSaveDir());
-                });
+            geode::createQuickPopup("object.json", "Dump finished successfully! Do you want to open the folder?", "No", "Yes", [](FLAlertLayer*, bool yes) {
+                if(!yes) return;
+                geode::utils::file::openFolder(geode::Mod::get()->getSaveDir());
+            });
         });
     }
     
