@@ -98,16 +98,16 @@ void traverse(CCNode* node, json& json_object, std::unordered_set<int> visited) 
         json_object[id_key]["default_z_layer"] = gob->m_defaultZLayer;
         json_object[id_key]["default_z_order"] = gob->m_defaultZOrder;
         auto newobject = json::object();
-        newobject["minX"] = gob->m_objectRect->getMinX();
-        newobject["midX"] = gob->m_objectRect->getMidX();
-        newobject["maxX"] = gob->m_objectRect->getMaxX();
-        newobject["minY"] = gob->m_objectRect->getMinY();
-        newobject["midY"] = gob->m_objectRect->getMidY();
-        newobject["maxY"] = gob->m_objectRect->getMaxY();
-        newobject["origin"]["x"] = gob->m_objectRect->origin->x;
-        newobject["origin"]["y"] = gob->m_objectRect->origin->y;
-        newobject["size"]["x"] = gob->m_objectRect->size->x;
-        newobject["size"]["y"] = gob->m_objectRect->size->y;
+        newobject["minX"] = gob->m_objectRect.getMinX();
+        newobject["midX"] = gob->m_objectRect.getMidX();
+        newobject["maxX"] = gob->m_objectRect.getMaxX();
+        newobject["minY"] = gob->m_objectRect.getMinY();
+        newobject["midY"] = gob->m_objectRect.getMidY();
+        newobject["maxY"] = gob->m_objectRect.getMaxY();
+        newobject["origin"]["x"] = gob->m_objectRect.origin.x;
+        newobject["origin"]["y"] = gob->m_objectRect.origin.y;
+        newobject["size"]["x"] = gob->m_objectRect.size.x;
+        newobject["size"]["y"] = gob->m_objectRect.size.y;
         json_object[id_key]["hitbox"] = newobject;
         if (gob->m_baseColor) {
             json_object[id_key]["default_base_color_channel"] = gob->m_baseColor->m_defaultColorID;
