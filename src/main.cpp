@@ -50,6 +50,38 @@ const char* get_frame_name(CCSprite* sprite_node) {
     return "none";
 }
 
+std::string get_spritesheet_name(CCSprite* sprite_node) {
+    auto* texture = sprite_node->getTexture();
+    if (!texture) return "unknown";
+    auto* textureCache = CCTextureCache::sharedTextureCache();
+    auto* cachedTextures = public_cast(textureCache, m_pTextures);
+    CCDictElement* el;
+    CCDICT_FOREACH(cachedTextures, el) {
+        auto* cachedTexture = static_cast<CCTexture2D*>(el->getObject());
+        if (cachedTexture == texture) {
+            std::string fullPath = el->getStrKey();
+            size_t lastSlash = fullPath.find_last_of("/\\");
+            size_t lastDot = fullPath.find_last_of(".");
+            
+            if (lastSlash != std::string::npos) {
+                if (lastDot != std::string::npos && lastDot > lastSlash) {
+                    return fullPath.substr(lastSlash + 1, lastDot - lastSlash - 1);
+                } else {
+                    return fullPath.substr(lastSlash + 1);
+                }
+            } else {
+                if (lastDot != std::string::npos) {
+                    return fullPath.substr(0, lastDot);
+                } else {
+                    return fullPath;
+                }
+            }
+        }
+    }
+    
+    return "unknown";
+}
+
 void traverse_gameobject(CCNode* node, const CCSize& parent_content_size, json& json_object) {
     const auto children_count = node->getChildrenCount();
     if (auto sprite_node = dynamic_cast<CCSprite*>(node); sprite_node && std::string(get_frame_name(sprite_node)) != std::string("none")) {
@@ -93,11 +125,12 @@ void traverse(CCNode* node, json& json_object, std::unordered_set<int> visited) 
         visited.insert(gob->m_objectID);
         auto id_key = std::to_string(gob->m_objectID);
         json_object[id_key] = json::object();
+        json_object[id_key]["spritesheet"] = get_spritesheet_name(gob);
         json_object[id_key]["frame"] = get_frame_name(gob);
         json_object[id_key]["object_type"] = gob->m_objectType;
         json_object[id_key]["default_z_layer"] = gob->m_defaultZLayer;
         json_object[id_key]["default_z_order"] = gob->m_defaultZOrder;
-        CCRect objectRect = gob->getObjectRect();
+        CCRect objectRect = gob->getObjectRect(1.0f, 1.0f);
         auto newobject = json::object();
         newobject["minX"] = objectRect.getMinX();
         newobject["midX"] = objectRect.getMidX();
