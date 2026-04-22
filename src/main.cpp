@@ -33,9 +33,34 @@ using json = nlohmann::json;
 	return c.get(reinterpret_cast<FriendeeClass__*>(v)); \
 }(value)
 
+std::string sanitize_utf8(const std::string& input) {
+    std::string out;
+    out.reserve(input.size());
+    size_t i = 0;
+    while (i < input.size()) {
+        unsigned char c = (unsigned char)input[i];
+        if (c < 0x80) {
+            out += (char)c;
+            ++i;
+        } else if ((c & 0xE0) == 0xC0 && i + 1 < input.size() && ((unsigned char)input[i+1] & 0xC0) == 0x80) {
+            out += input[i]; out += input[i+1];
+            i += 2;
+        } else if ((c & 0xF0) == 0xE0 && i + 2 < input.size() && ((unsigned char)input[i+1] & 0xC0) == 0x80 && ((unsigned char)input[i+2] & 0xC0) == 0x80) {
+            out += input[i]; out += input[i+1]; out += input[i+2];
+            i += 3;
+        } else if ((c & 0xF8) == 0xF0 && i + 3 < input.size() && ((unsigned char)input[i+1] & 0xC0) == 0x80 && ((unsigned char)input[i+2] & 0xC0) == 0x80 && ((unsigned char)input[i+3] & 0xC0) == 0x80) {
+            out += input[i]; out += input[i+1]; out += input[i+2]; out += input[i+3];
+            i += 4;
+        } else {
+            out += '?';
+            ++i;
+        }
+    }
+    return out;
+}
+
 const char* get_frame_name(CCSprite* sprite_node) {
     auto* texture = sprite_node->getTexture();
-
     auto* frame_cache = CCSpriteFrameCache::sharedSpriteFrameCache();
     auto* cached_frames = public_cast(frame_cache, m_pSpriteFrames);
     const auto rect = sprite_node->getTextureRect();
@@ -51,7 +76,7 @@ void traverse_gameobject(CCNode* node, const CCSize& parent_content_size, json& 
     const auto children_count = node->getChildrenCount();
     if (auto sprite_node = dynamic_cast<CCSprite*>(node); sprite_node && std::string(get_frame_name(sprite_node)) != std::string("none")) {
         auto object = json::object();
-        object["frame"] = get_frame_name(sprite_node);
+        object["frame"] = sanitize_utf8(get_frame_name(sprite_node));
         object["x"] = sprite_node->getPositionX() - parent_content_size.width / 2;
         object["y"] = sprite_node->getPositionY() - parent_content_size.height / 2;
         object["z"] = sprite_node->getZOrder();
@@ -97,7 +122,7 @@ void traverse(CCNode* node, json& json_object, std::unordered_set<int> visited) 
         hitboxjson["height"] = hitbox.size.height;
         hitboxjson["radius"] = gob->getObjectRadius();
         json_object[id_key] = json::object();
-        json_object[id_key]["frame"] = get_frame_name(gob);
+        json_object[id_key]["frame"] = sanitize_utf8(get_frame_name(gob));
         json_object[id_key]["type"] = gob->getType();
         json_object[id_key]["hitbox"].push_back(hitboxjson);
 
@@ -130,10 +155,10 @@ void traverse(CCNode* node, json& json_object, std::unordered_set<int> visited) 
         }
     } else {
         auto children = node->getChildren();
-		for (unsigned int i = 0; i < children_count; ++i) {
-			auto child = children->objectAtIndex(i);
-			traverse(dynamic_cast<CCNode*>(child), json_object, visited);
-		}
+        for (unsigned int i = 0; i < children_count; ++i) {
+            auto child = children->objectAtIndex(i);
+            traverse(dynamic_cast<CCNode*>(child), json_object, visited);
+        }
     }
 }
 
