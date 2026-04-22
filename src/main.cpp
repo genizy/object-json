@@ -92,8 +92,18 @@ void traverse(CCNode* node, json& json_object, std::unordered_set<int> visited) 
         ) {
         visited.insert(gob->m_objectID);
         auto id_key = std::to_string(gob->m_objectID);
+        auto hitbox = god.getObjectRect();
+        auto hitboxjson = json::object();
+        hitboxjson["x"] = hitbox.origin.x;
+        hitboxjson["y"] = hitbox.origin.y;
+        hitboxjson["width"] = hitbox.size.width;
+        hitboxjson["height"] = hitbox.size.height;
+        hitboxjson["radius"] = gob.getObjectRadius();
         json_object[id_key] = json::object();
         json_object[id_key]["frame"] = get_frame_name(gob);
+        json_object[id_key]["type"] = gob.getType();
+        json_object[id_key]["hitbox"].push_back(hitboxjson);
+
         json_object[id_key]["default_z_layer"] = gob->m_defaultZLayer;
         json_object[id_key]["default_z_order"] = gob->m_defaultZOrder;
         if (gob->m_baseColor) {
