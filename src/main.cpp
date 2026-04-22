@@ -36,15 +36,12 @@ using json = nlohmann::json;
 const char* get_frame_name(CCSprite* sprite_node) {
     auto* texture = sprite_node->getTexture();
 
-    CCDictElement* el;
-
     auto* frame_cache = CCSpriteFrameCache::sharedSpriteFrameCache();
     auto* cached_frames = public_cast(frame_cache, m_pSpriteFrames);
     const auto rect = sprite_node->getTextureRect();
-    for (auto el : cached_frames){
-            auto* frame = static_cast<CCSpriteFrame*>(el->getObject());
+    for (auto [key, frame] : CCDictionaryExt<std::string, CCSpriteFrame*>(cached_frames)) {
             if (frame->getTexture() == texture && frame->getRect() == rect) {
-                return el->getStrKey();
+                return key.c_str();
             }
         };
     return "none";
