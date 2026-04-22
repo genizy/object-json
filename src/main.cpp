@@ -39,7 +39,7 @@ const char* get_frame_name(CCSprite* sprite_node) {
     auto* frame_cache = CCSpriteFrameCache::sharedSpriteFrameCache();
     auto* cached_frames = public_cast(frame_cache, m_pSpriteFrames);
     const auto rect = sprite_node->getTextureRect();
-    for (auto [key, frame] : CCDictionaryExt<std::string, CCSpriteFrame*>(cached_frames)) {
+    for (auto [key, frame] : geode::cocos::CCDictionaryExt<std::string, CCSpriteFrame*>(cached_frames)) {
             if (frame->getTexture() == texture && frame->getRect() == rect) {
                 return key.c_str();
             }
