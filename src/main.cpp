@@ -41,7 +41,7 @@ const char* get_frame_name(CCSprite* sprite_node) {
     auto* frame_cache = CCSpriteFrameCache::sharedSpriteFrameCache();
     auto* cached_frames = public_cast(frame_cache, m_pSpriteFrames);
     const auto rect = sprite_node->getTextureRect();
-    for (auto [cached_frames, el] : CCDictionaryExt<K, V>(dict)) {
+    for (auto el : CCDictionaryExt<K, V>(cached_frames)){
             auto* frame = static_cast<CCSpriteFrame*>(el->getObject());
             if (frame->getTexture() == texture && frame->getRect() == rect) {
                 return el->getStrKey();
